@@ -1,6 +1,6 @@
 {
   "name": "jam-skill-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Talk to an agent in a browser where its replies render as rich, typeset HTML instead of terminal markdown. The CLI backend for the jam skill.",
   "type": "module",
   "bin": {
