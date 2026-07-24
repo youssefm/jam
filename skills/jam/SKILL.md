@@ -16,16 +16,9 @@ background, then loop on `poll`.
 
 ## Running jam
 
-Install jam once so the `jam` command is on your PATH:
-
-```
-npm install -g jam-skill-cli
-```
-
-That's a no-op if it's already installed, so it's safe to run at the start of a
-session. Then run every command below as `jam <command>` (e.g. `jam open`). If
-`jam` isn't found after installing (a locked-down PATH), fall back to
-`npx -y jam-skill-cli` (same package, no install needed).
+Run every command below as `jam <command>` (e.g. `jam open`). If `jam` isn't
+found, install it with `npm install -g jam-skill-cli` and retry. If that install
+fails too, run it as `npx -y jam-skill-cli <command>`.
 
 ## Loop
 
