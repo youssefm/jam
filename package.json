@@ -1,0 +1,82 @@
+{
+  "name": "jam-skill",
+  "version": "0.1.0",
+  "description": "Talk to an agent in a browser where its replies render as rich, typeset HTML instead of terminal markdown. The CLI backend for the jam skill.",
+  "type": "module",
+  "bin": {
+    "jam-skill": "dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "app/dist",
+    "skills/jam",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build:app": "vite build app",
+    "build:cli": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli.mjs",
+    "build": "npm run build:app && npm run build:cli",
+    "dev": "vite app",
+    "start": "node dist/cli.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p app/tsconfig.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "prepack": "npm run build",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@fontsource-variable/inter": "^5.2.6",
+    "@fontsource-variable/jetbrains-mono": "^5.2.6",
+    "@fontsource-variable/source-serif-4": "^5.2.6",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "dompurify": "^3.4.12",
+    "eslint": "^9.39.4",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "esbuild": "^0.28.0",
+    "globals": "^17.6.0",
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.47",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.60.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.7"
+  },
+  "keywords": [
+    "jam",
+    "skill",
+    "claude",
+    "agent",
+    "cli",
+    "html",
+    "chat",
+    "browser"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youssefm/jam.git"
+  },
+  "bugs": {
+    "url": "https://github.com/youssefm/jam/issues"
+  },
+  "homepage": "https://github.com/youssefm/jam#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

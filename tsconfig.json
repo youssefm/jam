@@ -1,0 +1,40 @@
+{
+  // Typechecks the backend (`src/*.ts`): plain Node ESM TypeScript, run directly
+  // by Node's native type stripping (no emit, no compile step — see package.json
+  // `bin`). tsc here is a pure checker: noEmit, full strict. Types come from
+  // @types/node plus the inline annotations and the shared shapes in
+  // src/types.ts. The frontend has its own project at app/tsconfig.json;
+  // `npm run typecheck` runs both.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noEmit": true,
+    "strict": true,
+    // Extra strictness, matched to gloss/agenthub: index access yields
+    // T | undefined, every code path must return, optional props can't be fed an
+    // explicit undefined, and each file must stand alone as a module (Node's
+    // per-file type stripping needs this too).
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    // Backend is TypeScript-only (no checkJs, no .js sources); be explicit so a
+    // stray .js can't slip into the project unchecked.
+    "allowJs": false,
+    // Source imports carry the real on-disk `.ts` extension because Node's type
+    // stripping resolves the exact path at runtime (a `.js` specifier for a `.ts`
+    // file throws ERR_MODULE_NOT_FOUND). allowImportingTsExtensions lets tsc
+    // accept those specifiers; it requires noEmit, which we have.
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts"]
+}

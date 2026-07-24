@@ -1,0 +1,141 @@
+/* design-language.css — the shared design system: the tokens every turn draws on
+   and the small vocabulary of component classes the agent composes with instead
+   of freehanding CSS. Defined once here and in scope for injected agent turns
+   (they render in the same DOM), so a reply reaches for `.jam-card`/`.jam-callout`/
+   `.jam-metric` and the `--jam-*` tokens and looks coherent turn to turn.
+
+   The component classes are intentionally NOT scoped under `.md-content` — the
+   agent uses them inside its injected turns, which live in a `.jam-turn
+   .md-content` container, and a bare class must win over the zero-specificity
+   prose defaults in theme.css. This is a personal tool, so the design language is
+   a consistency mechanism, not a security fence. */
+
+:root {
+  color-scheme: dark;
+
+  /* --- color: a cool neutral charcoal ground and soft off-white ink (never pure
+     white, which glares), with one amber accent. Muted ink and the borders/fills
+     derive from the ink at low opacity so the theme moves together off a few
+     colors. */
+  --jam-bg: #191b1d;
+  --jam-surface: #202427;
+  --jam-ink: #e8ebee;
+  --jam-ink-muted: color-mix(in srgb, var(--jam-ink) 60%, transparent);
+  --jam-accent: #d97706;
+  --jam-border: color-mix(in srgb, var(--jam-ink) 22%, transparent);
+  --jam-border-subtle: color-mix(in srgb, var(--jam-ink) 12%, transparent);
+  --jam-code-bg: color-mix(in srgb, var(--jam-ink) 8%, transparent);
+
+  --jam-success: #6fbf78;
+  --jam-warn: #d8a441;
+  --jam-danger: #e26d62;
+
+  /* --- modular type scale (1.25 ratio around a 1rem base). */
+  --jam-text-sm: 0.875rem;
+  --jam-text-base: 1rem;
+  --jam-text-lg: 1.15rem;
+  --jam-text-xl: 1.4rem;
+  --jam-text-2xl: 1.85rem;
+
+  /* --- spacing scale. */
+  --jam-space-1: 0.25rem;
+  --jam-space-2: 0.5rem;
+  --jam-space-3: 0.75rem;
+  --jam-space-4: 1rem;
+  --jam-space-5: 1.5rem;
+  --jam-space-6: 2rem;
+  --jam-space-8: 3rem;
+
+  --jam-radius: 8px;
+  --jam-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+
+  /* --- the reading column width (centered ~760px). */
+  --jam-measure: 760px;
+
+  /* --- the three self-hosted families (registered by @fontsource-variable in
+     main.tsx). */
+  --jam-font-serif: 'Source Serif 4 Variable', Georgia, Cambria, 'Times New Roman', serif;
+  --jam-font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --jam-font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* --- syntax palette for highlighted code. */
+  --hl-comment: #8b949e;
+  --hl-keyword: #ff7b72;
+  --hl-string: #a5d6ff;
+  --hl-number: #79c0ff;
+  --hl-title: #d2a8ff;
+  --hl-attr: #79c0ff;
+  --hl-type: #ffa657;
+}
+
+/* --- card: an elevated panel for grouping a chunk of a reply. */
+.jam-card {
+  padding: var(--jam-space-4) var(--jam-space-5);
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border-subtle);
+  border-radius: var(--jam-radius);
+  box-shadow: var(--jam-shadow);
+}
+.jam-card > :first-child { margin-top: 0; }
+.jam-card > :last-child { margin-bottom: 0; }
+
+/* --- callout: a colored aside. Variants tint the left rule + background off one
+   `--jam-callout-color`, defaulting to the accent. */
+.jam-callout {
+  --jam-callout-color: var(--jam-accent);
+  padding: var(--jam-space-3) var(--jam-space-4);
+  border-left: 3px solid var(--jam-callout-color);
+  border-radius: var(--jam-radius);
+  background: color-mix(in srgb, var(--jam-callout-color) 10%, transparent);
+}
+.jam-callout > :first-child { margin-top: 0; }
+.jam-callout > :last-child { margin-bottom: 0; }
+.jam-callout.note { --jam-callout-color: var(--jam-accent); }
+.jam-callout.success { --jam-callout-color: var(--jam-success); }
+.jam-callout.warn { --jam-callout-color: var(--jam-warn); }
+.jam-callout.danger { --jam-callout-color: var(--jam-danger); }
+
+/* --- grid: an even multi-column row that collapses to one column when narrow. */
+.jam-grid { display: grid; gap: var(--jam-space-4); grid-template-columns: 1fr; }
+@media (min-width: 640px) {
+  .jam-grid.jam-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .jam-grid.jam-cols-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* --- metric: a label over a big number, for a stat callout. */
+.jam-metric { display: flex; flex-direction: column; gap: var(--jam-space-1); }
+.jam-metric-value {
+  font-family: var(--jam-font-sans);
+  font-size: var(--jam-text-2xl);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--jam-ink);
+}
+.jam-metric-label {
+  font-family: var(--jam-font-sans);
+  font-size: var(--jam-text-sm);
+  color: var(--jam-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* --- badge: a small inline pill. */
+.jam-badge {
+  display: inline-block;
+  padding: 0.15em 0.6em;
+  font-family: var(--jam-font-sans);
+  font-size: var(--jam-text-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--jam-accent);
+  background: color-mix(in srgb, var(--jam-accent) 14%, transparent);
+  border-radius: 999px;
+}
+
+/* --- divider: a hairline rule with generous space. */
+.jam-divider {
+  height: 1px;
+  margin: var(--jam-space-5) 0;
+  border: 0;
+  background: var(--jam-border-subtle);
+}

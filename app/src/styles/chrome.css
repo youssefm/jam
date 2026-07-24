@@ -1,0 +1,302 @@
+/* chrome.css — the app shell: the header, the scrolling transcript, the "you"
+   bubbles and typing indicator, and the composer. The chrome is sans (Inter);
+   agent prose is serif (theme.css). Tokens come from design-language.css. */
+
+html { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--jam-bg);
+  color: var(--jam-ink);
+  font-family: var(--jam-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Full-window column: fixed header, the transcript takes the rest and scrolls,
+   the composer pins to the bottom. `100dvh` tracks the mobile URL bar; `min-height:
+   0` lets the middle flex child actually shrink so its own scroll engages. */
+.jam-shell {
+  --jam-header-height: 52px;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  /* Anchors the floating composer, which is absolutely positioned over the
+     bottom of the transcript rather than docked in the column flow. */
+  position: relative;
+}
+
+/* --- header ---------------------------------------------------------------- */
+.jam-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jam-space-4);
+  height: var(--jam-header-height);
+  padding: 0 var(--jam-space-5);
+  background: color-mix(in srgb, var(--jam-bg) 86%, transparent);
+  backdrop-filter: saturate(1.2) blur(8px);
+  border-bottom: 1px solid var(--jam-border-subtle);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.jam-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--jam-space-3);
+}
+.jam-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: var(--jam-text-base);
+}
+.jam-session { color: var(--jam-ink-muted); font-weight: 400; font-size: var(--jam-text-sm); }
+
+/* The brand mark: a five-bar equalizer (JamMark.tsx). It sits still as the logo;
+   the two amber bars are the accent. `.is-playing` — bound to the agent-busy gate
+   — makes the bars pulse in a staggered wave while a reply is composing, so the
+   header carries a heartbeat through the wait. `overflow: visible` lets a bar grow
+   past its box on the upbeat without clipping. */
+.jam-mark { height: 20px; width: auto; display: block; overflow: visible; }
+.jam-mark-bar { fill: var(--jam-ink); transform-box: fill-box; transform-origin: bottom center; }
+.jam-mark-accent { fill: var(--jam-accent); }
+.jam-mark.is-playing .jam-mark-bar { animation: jam-eq 1.05s ease-in-out infinite; }
+.jam-mark.is-playing .jam-mark-bar:nth-of-type(1) { animation-delay: -0.90s; }
+.jam-mark.is-playing .jam-mark-bar:nth-of-type(2) { animation-delay: -0.20s; }
+.jam-mark.is-playing .jam-mark-bar:nth-of-type(3) { animation-delay: -0.60s; }
+.jam-mark.is-playing .jam-mark-bar:nth-of-type(4) { animation-delay: -0.05s; }
+.jam-mark.is-playing .jam-mark-bar:nth-of-type(5) { animation-delay: -0.78s; }
+@keyframes jam-eq {
+  0%, 100% { transform: scaleY(0.66); }
+  50% { transform: scaleY(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-mark.is-playing .jam-mark-bar { animation: none; }
+}
+
+/* --- transcript ------------------------------------------------------------ */
+
+.jam-transcript {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Reserve the scrollbar's space on both edges at all times, so the reading
+     column doesn't shift sideways when the scrollbar appears or disappears. The
+     side padding is the reading column's breathing room — it lives here on the
+     scroll container (not on the inner) so the inner's `max-width` measure is the
+     content width itself, letting turns fill the full measure and line up edge-to
+     -edge with the composer card, which caps at the same measure as its border-box
+     over the identical gutter + padding insets. */
+  scrollbar-gutter: stable both-edges;
+  padding: 0 var(--jam-space-5);
+}
+/* The log is an explicit tab stop (see Transcript.tsx). Its focus ring can't live
+   on the transcript's own box: the transcript runs the full window height and the
+   composer floats over its lower half behind a translucent scrim, so an outline
+   there shows through the scrim and dissolves as it descends. Instead the ring is
+   a separate overlay (`.jam-focus-frame`) painted above the composer, so it stays
+   crisp; kill the default UA outline here. */
+.jam-transcript:focus-visible { outline: none; }
+
+/* The transcript's focus frame: a full rail hugging the reading pane, stacked
+   above the composer (z-index 10) so it reads crisp rather than fading under its
+   scrim. The bottom edge rides the window floor, beneath the floating composer.
+   `pointer-events: none` keeps it inert; it lights up only when the transcript
+   has a keyboard focus ring. */
+.jam-focus-frame {
+  position: absolute;
+  top: var(--jam-header-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  pointer-events: none;
+  border: 2px solid var(--jam-accent);
+  opacity: 0;
+}
+.jam-shell:has(.jam-transcript:focus-visible) .jam-focus-frame { opacity: 1; }
+.jam-transcript-inner {
+  max-width: var(--jam-measure);
+  margin: 0 auto;
+  /* The generous bottom padding is clearance for the floating composer, which
+     overlays the bottom of the transcript — the last turn rests above the card
+     instead of behind it. */
+  padding: var(--jam-space-6) 0 10rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jam-space-5);
+}
+
+/* An agent turn. `contain: paint` clips its painting to its own box, so no turn
+   — however styled — can bleed over its neighbors or the chrome. */
+.jam-turn {
+  contain: paint;
+  max-width: 100%;
+}
+/* A plain-text agent turn: a compact serif bubble, left-aligned. */
+.jam-turn-text {
+  align-self: flex-start;
+  max-width: 90%;
+  padding: var(--jam-space-3) var(--jam-space-4);
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border-subtle);
+  border-radius: var(--jam-radius);
+  font-family: var(--jam-font-serif);
+  font-size: var(--jam-text-lg);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* A "you" turn: a terse right-aligned accent bubble in the UI sans — the
+   asymmetry with the full-width serif agent turns makes ownership legible. */
+.jam-you {
+  align-self: flex-end;
+  max-width: 80%;
+  padding: var(--jam-space-3) var(--jam-space-4);
+  background: color-mix(in srgb, var(--jam-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--jam-accent) 30%, transparent);
+  border-radius: var(--jam-radius);
+  font-size: var(--jam-text-base);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* A client-only error notice (a failed send). */
+.jam-error {
+  align-self: center;
+  max-width: 90%;
+  padding: var(--jam-space-2) var(--jam-space-4);
+  color: var(--jam-danger);
+  background: color-mix(in srgb, var(--jam-danger) 12%, transparent);
+  border-radius: var(--jam-radius);
+  font-size: var(--jam-text-sm);
+  text-align: center;
+}
+
+/* Typing indicator — three accent dots pulsing in opacity (no motion), offset so
+   the pulse reads as a gentle left-to-right wave. */
+.jam-typing { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; padding: var(--jam-space-2) 0; }
+.jam-typing > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--jam-accent);
+  animation: jam-typing-fade 1.4s infinite ease-in-out;
+}
+.jam-typing > span:nth-child(2) { animation-delay: 0.2s; }
+.jam-typing > span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes jam-typing-fade {
+  0%, 100% { opacity: 0.18; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-typing > span { animation: none; opacity: 0.6; }
+}
+
+/* --- composer -------------------------------------------------------------- */
+
+/* The composer floats over the bottom of the transcript as an elevated rounded
+   card, so the conversation scrolls behind it and fades out under a gradient
+   scrim (rather than stopping at a docked bar with a hard top border). The outer
+   element is the full-width scrim; `.jam-composer-inner` is the card.
+
+   `pointer-events: none` on the scrim lets clicks fall through the faded area to
+   the transcript behind it; the card re-enables them. `overflow: hidden` +
+   `scrollbar-gutter` keeps the card's reading column exactly aligned with the
+   transcript's (same both-edge gutter — no scrollbar ever shows here). */
+.jam-composer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 4rem var(--jam-space-5) var(--jam-space-6);
+  background: linear-gradient(
+    to top,
+    var(--jam-bg) 45%,
+    color-mix(in srgb, var(--jam-bg) 70%, transparent) 72%,
+    transparent
+  );
+  pointer-events: none;
+  overflow: hidden;
+  scrollbar-gutter: stable both-edges;
+}
+.jam-composer-inner {
+  pointer-events: auto;
+  width: 100%;
+  max-width: var(--jam-measure);
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--jam-space-2);
+  padding: var(--jam-space-3);
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border);
+  border-radius: 20px;
+  box-shadow: var(--jam-shadow);
+  transition: border-color 0.12s;
+}
+.jam-composer-inner:focus-within { border-color: var(--jam-accent); }
+/* Borderless inside the card — the card is the visible boundary, and its
+   focus-within accent border is the focus affordance, so the textarea drops its
+   own frame and ring. */
+.jam-input {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: var(--jam-text-base);
+  resize: none; /* height driven by the autosize effect */
+  min-height: 3.5em; /* ~two rows */
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 0.4rem 0.5rem;
+  color: var(--jam-ink);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+.jam-input:focus-visible { outline: none; }
+.jam-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* --- buttons --------------------------------------------------------------- */
+.jam-btn {
+  font: inherit;
+  font-size: var(--jam-text-sm);
+  line-height: 1;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--jam-border);
+  border-radius: var(--jam-radius);
+  background: var(--jam-surface);
+  color: var(--jam-ink);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, filter 0.12s;
+}
+.jam-btn:hover { border-color: var(--jam-accent); }
+.jam-btn:focus-visible { outline: 2px solid var(--jam-accent); outline-offset: 1px; }
+.jam-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.jam-btn-primary { background: var(--jam-accent); border-color: var(--jam-accent); color: var(--jam-bg); }
+.jam-btn-primary:hover:not(:disabled) { filter: brightness(1.08); border-color: var(--jam-accent); }
+.jam-btn-ghost { border-color: transparent; background: transparent; color: var(--jam-ink-muted); }
+.jam-btn-ghost:hover:not(:disabled) { background: var(--jam-code-bg); border-color: transparent; color: var(--jam-ink); }
+
+/* --- banner / ended state -------------------------------------------------- */
+.jam-banner {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 0.5rem 1rem;
+  font-size: var(--jam-text-sm);
+  background: var(--jam-ink);
+  color: var(--jam-bg);
+  border-radius: 999px;
+  box-shadow: var(--jam-shadow);
+}
+body.jam-ended .jam-composer { opacity: 0.5; pointer-events: none; }

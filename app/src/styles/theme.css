@@ -1,0 +1,144 @@
+/* theme.css — the reading theme for an agent HTML turn, scoped entirely under
+   `.md-content`. Dark only. Every rule is a low-specificity `.md-content
+   :where(...)` selector so the prose defaults never fight the design-language
+   component classes (a bare `.jam-card`/`.jam-callout` wins) or any inline style an
+   agent turn sets. Serif body — this is the aesthetic: replies read like an
+   authored page, not chat bubbles. Tokens come from design-language.css. */
+
+.md-content {
+  color: var(--jam-ink);
+  font-family: var(--jam-font-serif);
+  font-size: var(--jam-text-lg);
+  line-height: 1.7;
+  word-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Vertical rhythm: even spacing between blocks, none at the edges. The
+   design-language blocks (.jam-card/.jam-callout/.jam-grid/.jam-metric) join the
+   prose rhythm so they don't stack flush against a neighbor; grid items are
+   spaced by the grid's own gap, so they opt back out just below. */
+.md-content :where(p, ul, ol, blockquote, pre, table, hr, figure, .jam-card, .jam-callout, .jam-grid, .jam-metric) {
+  margin: 0 0 var(--jam-space-4);
+}
+.md-content :where(.jam-grid) > * { margin-bottom: 0; }
+.md-content > :where(:first-child) { margin-top: 0; }
+.md-content > :where(:last-child) { margin-bottom: 0; }
+
+/* Headings — sans for a crisp counterpoint to the serif body, strong hierarchy
+   and breathing room above. */
+.md-content :where(h1, h2, h3, h4, h5, h6) {
+  margin: var(--jam-space-6) 0 var(--jam-space-4);
+  font-family: var(--jam-font-sans);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.md-content :where(h1) { font-size: var(--jam-text-2xl); }
+.md-content :where(h2) { font-size: var(--jam-text-xl); }
+.md-content :where(h3) { font-size: var(--jam-text-lg); }
+.md-content :where(h4, h5, h6) { font-size: var(--jam-text-base); }
+.md-content :where(h6) { color: var(--jam-ink-muted); }
+.md-content :where(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
+
+.md-content :where(a) { color: var(--jam-accent); text-decoration: none; }
+.md-content :where(a):hover { text-decoration: underline; }
+.md-content :where(strong) { font-weight: 600; }
+
+/* Lists — comfortable indent, tidy nesting. */
+.md-content :where(ul, ol) { padding-left: 1.5em; }
+.md-content :where(li) { margin: 0.3em 0; }
+.md-content :where(li > ul, li > ol) { margin: 0.3em 0; }
+
+/* Blockquotes & rules. */
+.md-content :where(blockquote) {
+  padding: 0 1em;
+  color: var(--jam-ink-muted);
+  border-left: 0.25em solid var(--jam-border);
+}
+.md-content :where(blockquote) > :where(:first-child) { margin-top: 0; }
+.md-content :where(blockquote) > :where(:last-child) { margin-bottom: 0; }
+.md-content :where(hr) {
+  height: 1px;
+  border: 0;
+  background: var(--jam-border);
+  margin: var(--jam-space-5) 0;
+}
+
+/* Code — mono, at a slightly smaller size than the serif body. */
+.md-content :where(code, kbd, samp) {
+  font-family: var(--jam-font-mono);
+  font-size: 0.85em;
+}
+.md-content :where(:not(pre) > code) {
+  padding: 0.05em 0.4em;
+  background: var(--jam-code-bg);
+  border-radius: 4px;
+}
+/* Preformatted blocks — mono, slightly smaller than the serif body. The font is
+   set here (not only on `code`) so a bare `<pre>` for non-code (a log, ASCII, a
+   directory tree) matches a `<pre><code>` code block. */
+.md-content :where(pre) {
+  padding: var(--jam-space-4);
+  overflow-x: auto;
+  background: var(--jam-code-bg);
+  border: 1px solid var(--jam-border-subtle);
+  border-radius: var(--jam-radius);
+  font-family: var(--jam-font-mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+/* Inherit `pre`'s size — don't let the `code` rule's 0.85em compound on top. */
+.md-content :where(pre) > code {
+  display: block;
+  padding: 0;
+  font-size: 1em;
+  background: none;
+  color: var(--jam-ink);
+}
+
+/* Syntax highlighting (highlight.js token classes). */
+.md-content :where(.hljs-comment, .hljs-quote) { color: var(--hl-comment); font-style: italic; }
+.md-content :where(.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-literal) { color: var(--hl-keyword); }
+.md-content :where(.hljs-string, .hljs-regexp, .hljs-meta .hljs-string) { color: var(--hl-string); }
+.md-content :where(.hljs-number, .hljs-symbol, .hljs-bullet) { color: var(--hl-number); }
+.md-content :where(.hljs-title, .hljs-section, .hljs-function .hljs-title, .hljs-name) { color: var(--hl-title); }
+.md-content :where(.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable) { color: var(--hl-attr); }
+.md-content :where(.hljs-type, .hljs-class .hljs-title, .hljs-tag, .hljs-meta) { color: var(--hl-type); }
+.md-content :where(.hljs-emphasis) { font-style: italic; }
+.md-content :where(.hljs-strong) { font-weight: 600; }
+
+/* Math (KaTeX, typeset client-side from the raw TeX in `.jam-math` /
+   `.jam-math-display` — see math.ts). A display block is a bare `<div>`, so it's
+   outside the prose margin rule above; give it the same block rhythm and let a
+   wide equation scroll rather than overflow the turn. KaTeX's own `.katex-display`
+   carries a 1em margin — zero it so it doesn't double up with the wrapper's. */
+.md-content :where(.jam-math-display) {
+  margin: var(--jam-space-4) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.md-content :where(.jam-math-display) > .katex-display { margin: 0; }
+.md-content > :where(.jam-math-display:first-child) { margin-top: 0; }
+.md-content > :where(.jam-math-display:last-child) { margin-bottom: 0; }
+
+/* Tables — bordered, zebra rows, horizontal scroll when wide. */
+.md-content :where(table) {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--jam-text-base);
+}
+.md-content :where(th, td) {
+  padding: 0.5em 0.85em;
+  border: 1px solid var(--jam-border);
+  text-align: left;
+}
+.md-content :where(th) { font-weight: 600; background: var(--jam-code-bg); }
+.md-content :where(tbody tr:nth-child(2n)) { background: color-mix(in srgb, var(--jam-ink) 4%, transparent); }
+
+/* Media. */
+.md-content :where(img) { max-width: 100%; height: auto; border-radius: var(--jam-radius); }
