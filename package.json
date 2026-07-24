@@ -4,8 +4,7 @@
   "description": "Talk to an agent in a browser where its replies render as rich, typeset HTML instead of terminal markdown. The CLI backend for the jam skill.",
   "type": "module",
   "bin": {
-    "jam": "dist/cli.mjs",
-    "jam-skill-cli": "dist/cli.mjs"
+    "jam": "dist/cli.mjs"
   },
   "files": [
     "dist",

@@ -39,9 +39,10 @@ sloppy async.
 
 ## Packaging
 
-- **Published as `jam-skill-cli`** (unscoped). Two `bin` names (`jam` and `jam-skill-cli`)
-  both point at `dist/cli.mjs` — `jam` is the ergonomic command the skill installs
-  globally, `jam-skill-cli` keeps `npx -y jam-skill-cli` working with no install. The `files`
+- **Published as `jam-skill-cli`** (unscoped). A single `bin`, `jam` →
+  `dist/cli.mjs` — the ergonomic command the skill installs globally. `npx -y
+  jam-skill-cli` still works as an install-free fallback: npx runs a single-bin
+  package's sole executable whatever name you invoke it by. The `files`
   allowlist ships `dist`, `app/dist`, `LICENSE`, and `README.md` — the published
   package is the CLI only; the skill (`skills/jam/SKILL.md`) lives in the repo and
   reaches agents via `npx skills add`, not npm. The TypeScript source is *not*
