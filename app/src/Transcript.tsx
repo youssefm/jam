@@ -135,8 +135,15 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
   );
 }
 
-// One transcript turn. Memoized because turns are immutable and keyed by id, so
-// a new turn never re-sanitizes the ones already on screen.
+// One transcript turn. Turns are immutable and keyed by a unique monotonic id, so
+// same id means same content — memoize on the id alone. The default (object
+// identity) comparison would re-render on every SSE reconcile, which rebuilds the
+// turn objects from a fresh /state (chat.ts `reconcile`): that re-runs
+// `dangerouslySetInnerHTML`, and React DOM re-assigns `innerHTML` on any new
+// wrapper object (it compares the wrapper by reference, not the HTML string) —
+// wiping the highlight.js/KaTeX DOM mutations below, which the once-only mount
+// effect never re-applies. Comparing by id keeps a reconciled-but-unchanged turn
+// from re-rendering at all, so the typeset survives.
 const Turn = memo(function Turn({ turn }: { turn: TurnType }) {
   // Highlight code blocks and typeset any math once, right after this turn's HTML
   // lands in the DOM. Both load their libraries lazily (see highlight.ts, math.ts),
@@ -171,4 +178,4 @@ const Turn = memo(function Turn({ turn }: { turn: TurnType }) {
     );
   }
   return <div className="jam-turn jam-turn-text">{turn.text}</div>;
-});
+}, (previous, next) => previous.turn.id === next.turn.id);
