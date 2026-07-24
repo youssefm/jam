@@ -16,31 +16,38 @@ background, then loop on `poll`.
 
 ## Running jam
 
-jam is the `jam-skill` npm package — you don't need it installed. Invoke it with
-`npx -y jam-skill <command>`; the first run fetches it, later runs are cached.
-Wherever this doc shows a `jam` command, run it as `npx -y jam-skill …`.
+Install jam once so the `jam` command is on your PATH:
+
+```
+npm install -g jam-skill-cli
+```
+
+That's a no-op if it's already installed, so it's safe to run at the start of a
+session. Then run every command below as `jam <command>` (e.g. `jam open`). If
+`jam` isn't found after installing (a locked-down PATH), fall back to
+`npx -y jam-skill-cli` (same package, no install needed).
 
 ## Loop
 
-1. **Open once, backgrounded.** Run `npx -y jam-skill open` as a **background
+1. **Open once, backgrounded.** Run `jam open` as a **background
    task**. It opens the chat in the user's browser and prints one JSON line —
    `{ "session": "brave-otter", "url": "http://127.0.0.1:<port>/" }` — then stays
    running to host the chat. Capture the `session` id; you pass it to every `poll`.
    To **open with your first turn already showing**, pass a format flag and pipe
    the message body on stdin, exactly as you send a reply (see **Composing a
-   reply**): `npx -y jam-skill open --html` (or `--text`). Only open with a turn
+   reply**): `jam open --html` (or `--text`). Only open with a turn
    when it carries something substantive — a summary of what you've prepared or a
    specific question. Don't open with a generic greeting like "Hi, how can I
-   help?"; if you have nothing to lead with, just run `npx -y jam-skill open` with
+   help?"; if you have nothing to lead with, just run `jam open` with
    no format flag and let the user's first message set the direction.
-2. **Poll for the next message.** Run `npx -y jam-skill poll <session>`. It
+2. **Poll for the next message.** Run `jam poll <session>`. It
    **long-polls** — silent until the user sends a message or ends the chat — then
    prints one JSON envelope and exits. Leave it running; if your harness kills or
    times it out, re-run it.
 3. **Act on the envelope's `status`:**
    - **`message`** — the user's turn (`{ status, id, text, at }`). Compose your
      reply (see below) and send it **with the next poll** by piping it on stdin:
-     `npx -y jam-skill poll <session> --html` (or `--text`) posts the reply and
+     `jam poll <session> --html` (or `--text`) posts the reply and
      waits for the next message in one call.
    - **`ended`** — the user clicked **End chat**; the `open` task exits on its
      own. You're done.
@@ -66,7 +73,7 @@ Send your reply on **stdin**. Use a heredoc so the HTML never touches argv or th
 filesystem:
 
 ```
-npx -y jam-skill poll brave-otter --html <<'HTML'
+jam poll brave-otter --html <<'HTML'
 <h2>Two ways to cache this</h2>
 <p>The tradeoff is freshness versus load. Here's the shape of each:</p>
 <div class="jam-grid jam-cols-2">
@@ -165,10 +172,10 @@ terminal.
 ## Commands
 
 ```
-npx -y jam-skill open                   # host the chat (run backgrounded); prints { session, url }
-npx -y jam-skill open --html            # host the chat, seeding an opening HTML message from stdin
-npx -y jam-skill open --text            # host the chat, seeding an opening text message from stdin
-npx -y jam-skill poll <session>         # wait for the next message
-npx -y jam-skill poll <session> --html  # post an HTML reply on stdin, then wait
-npx -y jam-skill poll <session> --text  # post a text reply on stdin, then wait
+jam open                   # host the chat (run backgrounded); prints { session, url }
+jam open --html            # host the chat, seeding an opening HTML message from stdin
+jam open --text            # host the chat, seeding an opening text message from stdin
+jam poll <session>         # wait for the next message
+jam poll <session> --html  # post an HTML reply on stdin, then wait
+jam poll <session> --text  # post a text reply on stdin, then wait
 ```

@@ -26,9 +26,9 @@ npx skills add youssefm/jam --skill jam
 ```
 
 That installs `SKILL.md` into your agent's skills directory (`~/.claude/skills/jam/`
-for a personal install, `.claude/skills/jam/` for a project). Nothing else to set
-up — the skill invokes the CLI on demand with `npx -y jam-skill`, so the first chat
-fetches the package and later ones use the cache.
+for a personal install, `.claude/skills/jam/` for a project). On first use the skill
+installs the CLI globally (`npm install -g jam-skill-cli`) so the `jam` command is on
+PATH — or falls back to `npx -y jam-skill-cli` where a global install isn't available.
 
 **Requirements:** Node ≥ 18.
 
@@ -42,13 +42,14 @@ Once the skill is installed, just ask the agent to move into the browser:
 you talk. Click **End chat** in the header when you're done — control returns to the
 terminal.
 
-You can also drive the CLI directly:
+You can also drive the CLI directly (after `npm install -g jam-skill-cli`, or via
+`npx -y jam-skill-cli` without installing):
 
 ```
-npx -y jam-skill open                   # host the chat; prints { session, url }
-npx -y jam-skill poll <session>         # wait for the next message
-npx -y jam-skill poll <session> --html  # post an HTML reply (on stdin), then wait
-npx -y jam-skill poll <session> --text  # post a plain-text reply, then wait
+jam open                   # host the chat; prints { session, url }
+jam poll <session>         # wait for the next message
+jam poll <session> --html  # post an HTML reply (on stdin), then wait
+jam poll <session> --text  # post a plain-text reply, then wait
 ```
 
 ## How it works
@@ -61,7 +62,7 @@ npx -y jam-skill poll <session> --text  # post a plain-text reply, then wait
   command posts-and-waits per turn.
 - **Zero runtime dependencies.** The backend (`src/*.ts`) uses only Node built-ins.
   The browser app (React + Vite) is prebuilt into `app/dist` and shipped in the
-  package, so `npx -y jam-skill` installs nothing transitive.
+  package, so installing `jam-skill-cli` pulls in nothing transitive.
 - **Rich, safe rendering.** Agent HTML is sanitized with DOMPurify, then rendered
   full-width with client-side syntax highlighting (highlight.js) and math (KaTeX)
   loaded lazily only when a turn uses them. Sanitization is hygiene, not a sandbox —

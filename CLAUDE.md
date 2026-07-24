@@ -9,9 +9,10 @@ no document to review — the conversation is the artifact.
 
 This repo ships two things that travel together: the CLI (`src/`, bundled to
 `dist/cli.mjs`) and the installable skill (`skills/jam/SKILL.md`) that teaches an
-agent to drive it. It's published to npm as **`jam-skill`** and installed as a
-skill with `npx skills add youssefm/jam --skill jam`; the skill invokes the CLI on
-demand via `npx -y jam-skill`.
+agent to drive it. It's published to npm as **`jam-skill-cli`** and installed as a
+skill with `npx skills add youssefm/jam --skill jam`; the skill installs the CLI
+with `npm install -g jam-skill-cli` (so the `jam` command is on PATH) and falls back to
+`npx -y jam-skill-cli` where a global install isn't available.
 
 ## Commands
 
@@ -38,13 +39,17 @@ sloppy async.
 
 ## Packaging
 
-- **Published as `jam-skill`** (unscoped). `bin` → `dist/cli.mjs`. The `files`
-  allowlist ships `dist`, `app/dist`, `skills/jam`, `LICENSE`, and `README.md` — the
-  TypeScript source is *not* published.
+- **Published as `jam-skill-cli`** (unscoped). Two `bin` names (`jam` and `jam-skill-cli`)
+  both point at `dist/cli.mjs` — `jam` is the ergonomic command the skill installs
+  globally, `jam-skill-cli` keeps `npx -y jam-skill-cli` working with no install. The `files`
+  allowlist ships `dist`, `app/dist`, `LICENSE`, and `README.md` — the published
+  package is the CLI only; the skill (`skills/jam/SKILL.md`) lives in the repo and
+  reaches agents via `npx skills add`, not npm. The TypeScript source is *not*
+  published either.
 - **Zero runtime dependencies.** The backend uses only Node built-ins; every entry
   in `dependencies`… there are none. React, DOMPurify, highlight.js, KaTeX, and the
   fonts are all `devDependencies` — they get bundled into `app/dist` at build time,
-  so `npx -y jam-skill` installs nothing transitive.
+  so installing `jam-skill-cli` pulls in nothing transitive.
 - **`prepare` / `prepack`** run `npm run build`, so a local install and every
   `npm pack` / publish regenerate `dist/` and `app/dist` from source.
 - **The CLI is a plain-JS esbuild bundle** (`dist/cli.mjs`, ESM, `node18` target)

@@ -1,15 +1,15 @@
 {
-  "name": "jam-skill",
+  "name": "jam-skill-cli",
   "version": "0.1.0",
   "description": "Talk to an agent in a browser where its replies render as rich, typeset HTML instead of terminal markdown. The CLI backend for the jam skill.",
   "type": "module",
   "bin": {
-    "jam-skill": "dist/cli.mjs"
+    "jam": "dist/cli.mjs",
+    "jam-skill-cli": "dist/cli.mjs"
   },
   "files": [
     "dist",
     "app/dist",
-    "skills/jam",
     "LICENSE",
     "README.md"
   ],
