@@ -154,7 +154,7 @@ const Turn = memo(function Turn({ turn }: { turn: TurnType }) {
   useLayoutEffect(() => {
     if (htmlRef.current) {
       void highlightWithin(htmlRef.current);
-      void renderMathWithin(htmlRef.current);
+      renderMathWithin(htmlRef.current);
     }
   }, []);
 

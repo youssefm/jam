@@ -123,6 +123,16 @@
 .md-content > :where(.jam-math-display:first-child) { margin-top: 0; }
 .md-content > :where(.jam-math-display:last-child) { margin-bottom: 0; }
 
+/* First math turn of a session only: the KaTeX chunk is still loading, so math.ts
+   holds the whole turn hidden until it has typeset, then removes this class to
+   fade the finished reply in — the equation appears fully-formed rather than
+   flashing raw TeX or popping into an already-visible turn. `opacity` keeps the
+   turn's layout reserved so the transcript below doesn't jump. Later math turns
+   typeset synchronously off the cached module and never take this path, so this
+   transition never fires for them (their opacity never changes). */
+.md-content { transition: opacity 160ms ease-out; }
+.md-content.jam-math-loading { opacity: 0; }
+
 /* Tables — bordered, zebra rows, horizontal scroll when wide. */
 .md-content :where(table) {
   display: block;
