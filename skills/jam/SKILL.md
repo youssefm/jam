@@ -85,9 +85,8 @@ HTML
 ```
 
 Lean into **rich, visually engaging HTML** whenever it makes the answer clearer —
-comparisons, steps, code, stats, callouts, or an explanation that simply reads
-better laid out. Reach for inline `<svg>` when a diagram, chart, or icon would
-land an idea better than prose. Make replies a pleasure to read, not markdown
+comparisons, steps, code, stats, callouts, diagrams, charts, or an explanation
+that simply reads better laid out. Make replies a pleasure to read, not markdown
 in a window. Use `--text` when a reply is genuinely plain and layout would add
 nothing. Prefer
 the **design language** below over ad-hoc CSS. Inline `style` is fine for a
@@ -128,6 +127,12 @@ class picks the mode:
 
 The TeX lives in HTML, so escape `<` and `&` like any markup (`a &lt; b`); the
 `\lt \gt \le \ge \ne` commands sidestep the comparison escapes.
+
+### Visualizations
+
+Reach for hand-authored inline `<svg>` when a diagram or chart lands an idea
+better than prose (there are no scripts, so no charting libraries). Give it a
+`viewBox` and `style="width: 100%; height: auto"` so it scales to the column.
 
 ### Component classes
 
