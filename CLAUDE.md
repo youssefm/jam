@@ -10,7 +10,8 @@ no document to review — the conversation is the artifact.
 This repo ships two things that travel together: the CLI (`src/`, bundled to
 `dist/cli.mjs`) and the installable skill (`skills/jam/SKILL.md`) that teaches an
 agent to drive it. It's published to npm as **`jam-skill-cli`** and installed as a
-skill with `npx skills add youssefm/jam --skill jam`; the skill installs the CLI
+skill with `npx -y skills add youssefm/jam --skill jam --agent '*' -g -y`
+(user-global, every detected agent, no prompts); the skill installs the CLI
 with `npm install -g jam-skill-cli` (so the `jam` command is on PATH) and falls back to
 `npx -y jam-skill-cli` where a global install isn't available.
 

@@ -22,13 +22,15 @@ freehanded.
 Add the skill with the [`skills`](https://github.com/vercel-labs/agent-skills) CLI:
 
 ```
-npx skills add youssefm/jam --skill jam
+npx -y skills add youssefm/jam --skill jam --agent '*' -g -y
 ```
 
-That installs `SKILL.md` into your agent's skills directory (`~/.claude/skills/jam/`
-for a personal install, `.claude/skills/jam/` for a project). On first use the skill
-installs the CLI globally (`npm install -g jam-skill-cli`) so the `jam` command is on
-PATH — or falls back to `npx -y jam-skill-cli` where a global install isn't available.
+That installs `SKILL.md` user-globally (`~/.claude/skills/jam/`) into every detected
+agent, with no prompts — `-g` pins the user scope, `--agent '*'` targets all agents,
+`-y` skips confirmations. On
+first use the skill installs the CLI globally (`npm install -g jam-skill-cli`) so the
+`jam` command is on PATH — or falls back to `npx -y jam-skill-cli` where a global
+install isn't available.
 
 **Requirements:** Node ≥ 18.
 
