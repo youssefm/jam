@@ -8,10 +8,16 @@ import { createRoot } from 'react-dom/client';
 
 // Self-hosted variable fonts (bundled as .woff2 by Vite, served by the static
 // route) — offline, no network fonts. The @font-face families these register are
-// referenced by the --jam-font-* tokens in design-language.css.
+// referenced by the --jam-font-* tokens in design-language.css. The italic
+// entrypoints register the *same* families at `font-style: italic`, so `<em>` and
+// the italic hljs comment tokens get a real drawn italic instead of a browser-
+// synthesized slant; each subset is only fetched when italic text renders.
 import '@fontsource-variable/source-serif-4';
+import '@fontsource-variable/source-serif-4/wght-italic.css';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/inter/wght-italic.css';
 import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/jetbrains-mono/wght-italic.css';
 
 import './styles/theme.css';
 import './styles/design-language.css';
