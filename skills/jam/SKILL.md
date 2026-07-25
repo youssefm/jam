@@ -88,7 +88,8 @@ Lean into **rich, visually engaging HTML** whenever it makes the answer clearer 
 comparisons, steps, code, stats, callouts, diagrams, charts, or an explanation
 that simply reads better laid out. Make replies a pleasure to read, not markdown
 in a window. Use `--text` when a reply is genuinely plain and layout would add
-nothing. Prefer
+nothing — markdown syntax like `**bold**` or `- item` renders there as literal
+characters. Prefer
 the **design language** below over ad-hoc CSS. Inline `style` is fine for a
 genuine one-off.
 
@@ -103,11 +104,12 @@ Compose with these classes and tokens instead of reinventing styles.
 ### Prose
 
 Plain semantic tags are themed for you — a warm serif reading column, sans
-headings, mono code. Just write `<h2>`, `<p>`, `<ul>`, `<blockquote>`,
-`<table>`, `<pre><code>…</code></pre>`. **Always** name the language on real code
-with a `language-xxx` class — `<pre><code class="language-python">` — and the app
-highlights it. Write the code as plain source (no token `<span>`s), HTML-escaped
-like any other markup you emit. For preformatted **non-code** — a log, a shell
+headings, mono code. Just write `<h2>`, `<p>`, `<strong>`, `<em>`, `<ul>`/`<ol>`,
+`<blockquote>`, `<table>`, `<pre><code>…</code></pre>`. **Always** name the
+language on real code with a `language-xxx` class —
+`<pre><code class="language-python">` — and the app highlights it. Write the
+code as plain source (no token `<span>`s), HTML-escaped like any other markup
+you emit. For preformatted **non-code** — a log, a shell
 transcript, ASCII, a directory tree — use a plain `<pre>` on its own (no inner
 `<code>`); it renders monospaced but uncolored. Supported
 languages: `bash`, `c`, `cpp`, `csharp`, `css`, `diff`, `go`, `java`,
