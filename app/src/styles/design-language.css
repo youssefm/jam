@@ -119,7 +119,9 @@
   letter-spacing: 0.04em;
 }
 
-/* --- badge: a small inline pill. */
+/* --- badge: a small inline pill. The radius is exactly half the single-line box
+   height (0.15em + 1.5em/2 + 0.15em), so a one-line badge is a true pill while a
+   badge that wraps stays a rounded rectangle instead of swelling into a lozenge. */
 .jam-badge {
   display: inline-block;
   padding: 0.15em 0.6em;
@@ -129,7 +131,7 @@
   line-height: 1.5;
   color: var(--jam-accent);
   background: color-mix(in srgb, var(--jam-accent) 14%, transparent);
-  border-radius: 999px;
+  border-radius: 0.9em;
 }
 
 /* --- divider: a hairline rule with generous space. */
