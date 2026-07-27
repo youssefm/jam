@@ -147,6 +147,9 @@ better than prose (there are no scripts, so no charting libraries). Give it a
 - **`.jam-metric`** with **`.jam-metric-value`** + **`.jam-metric-label`** — a big
   number over a label, for a stat:
   `<div class="jam-metric"><span class="jam-metric-value">3.2s</span><span class="jam-metric-label">p95 latency</span></div>`
+- **`.jam-marker`** — a small accent circle leading a heading, for a numbered or
+  lettered section. Put it on a `<span>` as the heading's first child:
+  `<h2><span class="jam-marker">3</span>The two-phase wait</h2>`
 - **`.jam-badge`** — a small inline pill for a tag or status.
 - **`.jam-divider`** — a hairline rule (`<hr class="jam-divider">`) between sections.
 

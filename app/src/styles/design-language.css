@@ -134,6 +134,43 @@
   border-radius: 0.9em;
 }
 
+/* --- marker: the small circle that leads a heading — a section number, a letter,
+   a glyph. It stays a plain inline-block so the heading remains ordinary inline
+   text: `<code>`, `<em>` and links inside it keep flowing and wrapping normally,
+   which they would not if the marker turned the heading into a flex row.
+
+   `vertical-align` is the whole trick. Sitting on the text baseline (the default)
+   drops the circle visibly low, because a small digit's baseline is far below a
+   big heading's optical center and the gap widens as the heading grows; the lift
+   below puts the circle's center on the heading's cap center instead. Every
+   length is in `em` off the marker's own font-size, so one circle scales across
+   h1…h6, and the 0.22em lift is the cap-height correction for Inter.
+
+   The marker deliberately does *nothing* to the heading around it. A hanging
+   indent (heading padding plus a negative margin pulling the circle back into it,
+   or `text-indent`) would align a wrapped heading's later lines under its text
+   rather than under the circle — but it only holds while the marker really is the
+   first thing on the line, and CSS can't check that: `:first-child` ignores text
+   nodes, so `<h2>Part <span class="jam-marker">6</span>…` would drag the circle
+   back on top of "Part". Left alone, a marker anywhere — mid-sentence, in a
+   paragraph, inside a callout — is just a circle sitting in the text. The cost is
+   that a heading long enough to wrap starts its second line under the circle. */
+.jam-marker {
+  display: inline-block;
+  width: 2.25em;
+  height: 2.25em;
+  margin-inline-end: 0.8em;
+  font-family: var(--jam-font-sans);
+  font-size: 0.62em;
+  font-weight: 600;
+  line-height: 2.25em;
+  vertical-align: 0.22em;
+  text-align: center;
+  color: var(--jam-accent);
+  background: color-mix(in srgb, var(--jam-accent) 16%, transparent);
+  border-radius: 50%;
+}
+
 /* --- divider: a hairline rule with generous space. */
 .jam-divider {
   height: 1px;
