@@ -280,7 +280,9 @@ body {
    disc lands in empty space instead of amputating a word mid-line. */
 .jam-scroll-latest-slot {
   display: flex;
-  justify-content: flex-end;
+  /* Centered over the transcript's measure, not tucked into a corner: the
+     button is a mid-read affordance, and the middle is where the eye already is. */
+  justify-content: center;
   width: 100%;
   max-width: var(--jam-measure);
   height: var(--jam-scroll-latest-size);
