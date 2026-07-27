@@ -167,15 +167,23 @@ export function Transcript({
   // hundred milliseconds early, blinking the button out before the ride down it
   // triggered had started. It can lag when something moves the bottom without
   // moving the offset (a window resize, a turn re-rendering shorter); the next
-  // scroll of any size corrects it.
-  const onScroll = useCallback(() => {
+  // scroll of any size corrects it — and the ResizeObserver below re-reports for
+  // the one such move that is neither rare nor self-correcting, a growing draft
+  // pushing the bottom away while the view sits still.
+  const reportAtBottom = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el) return false;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= AT_BOTTOM_SLACK;
     onAtBottomChange(atBottom);
+    return atBottom;
+  }, [onAtBottomChange]);
+
+  const onScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const atBottom = reportAtBottom();
     if (selfScrolled.current) return;
     setPin(atBottom);
-  }, [setPin, onAtBottomChange]);
+  }, [setPin, reportAtBottom]);
 
   // A new turn (or the first layout pass) repositions the view. The initial load
   // takes the same reveal decision as an arriving turn but lands instantly — it
@@ -242,6 +250,12 @@ export function Transcript({
   // Late height changes (agent HTML laying out after mount) keep the bottom in
   // view only while the user is still following it.
   //
+  // Observed as a **border box**, which the default (content box) is not: the
+  // composer's clearance lands on this element as `padding-bottom` (chrome.css),
+  // and a content-box observation is by definition blind to padding. That blindness
+  // was a real bug — growing a draft raised the card over the tail of the very
+  // reply being answered, since the padding grew under a view that never moved.
+  //
   // Known gap: this maintains the pinned mode but not the anchored one. Content
   // growing *above* the anchor slides it without moving `scrollTop`, and the
   // anchored path deliberately unpinned, so nothing corrects it. Mostly theoretical
@@ -254,10 +268,14 @@ export function Transcript({
     if (!content) return;
     const observer = new ResizeObserver(() => {
       if (pinnedRef.current) scrollToBottom();
+      // Unpinned, the bottom just moved without a scroll event to notice it — the
+      // button has to hear about it from here or it stays hidden while the bottom
+      // is off-screen.
+      else reportAtBottom();
     });
-    observer.observe(content);
+    observer.observe(content, { box: 'border-box' });
     return () => observer.disconnect();
-  }, [scrollToBottom]);
+  }, [scrollToBottom, reportAtBottom]);
 
 
   return (

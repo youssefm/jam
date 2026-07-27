@@ -51,7 +51,9 @@ export function App({ state }: { state: ChatState }) {
   }, [ended, end]);
 
   return (
-    <div className="jam-shell">
+    // `data-reading` lengthens the composer's fade while the view is away from the
+    // bottom — see `--jam-composer-scrim` in chrome.css.
+    <div className="jam-shell" data-reading={atBottom ? undefined : ''}>
       <header className="jam-header">
         <div className="jam-header-left">
           <JamMark playing={agentBusy} />

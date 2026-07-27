@@ -20,6 +20,32 @@ body {
 .jam-shell {
   --jam-header-height: 52px;
   --jam-scroll-latest-size: 34px;
+  /* How far above the composer card the transcript keeps clear — the gap under the
+     last line of a reply. It reads ~5px larger than it measures, because it's
+     measured to the last line's *box* and prose leaves half-leading below its
+     descenders; the inset below the card (`.jam-composer`) is 4px larger to
+     compensate, so the two look level. */
+  --jam-composer-fade: 24px;
+  /* How far content dissolves through before it reaches the card. Parked at the
+     bottom this matches the gap above, which is what puts the last line exactly
+     where the scrim turns transparent — full contrast, no dead space. But then
+     nothing is ever *in* the band, so the dissolve only shows while scrolling, and
+     at that length a line vanishes inside its own height. Away from the bottom the
+     band therefore opens up to `--jam-composer-scrim-max`, where a longer fade
+     costs nothing: the transcript is only judged "away" once the tail is at least
+     `AT_BOTTOM_SLACK` (80px) up, so the longer band can never reach back and dim
+     it. */
+  --jam-composer-scrim: var(--jam-composer-fade);
+  --jam-composer-scrim-max: 4.5rem;
+  /* The band eases between its two lengths here, on the element the swap happens
+     on; descendants inherit the animating value. */
+  transition: --jam-composer-scrim 0.2s ease-out;
+  /* The card's top edge down to the window floor. Composer.tsx overwrites this
+     with the measured value as an inline style on this element; the value here is
+     only what the first paint uses, and matches the card at its resting two-row
+     height (3.5em textarea + its padding + the card's padding, border, and the
+     composer's bottom inset). */
+  --jam-composer-clearance: 110px;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -124,11 +150,15 @@ body {
 .jam-transcript-inner {
   max-width: var(--jam-measure);
   margin: 0 auto;
-  /* The generous bottom padding is clearance for the floating composer, which
-     overlays the bottom of the transcript — the last turn rests above the card
-     instead of behind it. It covers the card, its scroll-to-latest slot, and a
-     margin of slack on top. */
-  padding: var(--jam-space-6) 0 13rem;
+  /* Clearance for the floating composer, which overlays the bottom of the
+     transcript: scrolled to the end, the last line lands exactly where the scrim
+     turns fully transparent — clear of the card, at full contrast, with nothing
+     wasted below it. Both terms are live, so a textarea grown by a long draft
+     takes its extra height out of this padding rather than out of the last line.
+     The scroll-to-latest slot is deliberately not part of the clearance: it only
+     holds a button while the view is away from the bottom, and then it floats over
+     mid-transcript content, never over the tail. */
+  padding: var(--jam-space-6) 0 calc(var(--jam-composer-clearance) + var(--jam-composer-fade));
   display: flex;
   flex-direction: column;
   gap: var(--jam-space-5);
@@ -204,10 +234,35 @@ body {
 
 /* --- composer -------------------------------------------------------------- */
 
+/* Registered so it can be transitioned: an unregistered custom property is an
+   untyped token and jumps between values. Typing it as a length is what lets the
+   band ease between its two lengths — and lets *only* the band ease. Transitioning
+   `background` instead would interpolate the whole gradient, dragging the opaque
+   stop along behind the card for 200ms every time a draft grows it. */
+@property --jam-composer-scrim {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 24px;
+}
+
+/* Scrolled away from the bottom, content is actually travelling under the card,
+   so the dissolve gets room to read as one. Set by App.tsx off the same at-bottom
+   signal that raises the scroll-to-latest button. */
+.jam-shell[data-reading] { --jam-composer-scrim: var(--jam-composer-scrim-max); }
+
 /* The composer floats over the bottom of the transcript as an elevated rounded
    card, so the conversation scrolls behind it and fades out under a gradient
    scrim (rather than stopping at a docked bar with a hard top border). The outer
    element is the full-width scrim; `.jam-composer-inner` is the card.
+
+   The scrim is opaque up to the card's top edge and fades out over the band above
+   it — anchored in pixels off the floor (the same measured clearance the transcript
+   pads by), not in percentages of this box, so a textarea grown by a long draft
+   slides the whole ramp up with the card instead of restretching it. Parked at the
+   bottom the band ends exactly where the transcript parks its last line, which is
+   what keeps that line at full contrast; scrolling lengthens it (see
+   `--jam-composer-scrim`). The top padding is the ramp's headroom inside this box,
+   taken from the longer of the two lengths so the ramp always has room.
 
    `pointer-events: none` on the scrim lets clicks fall through the faded area to
    the transcript behind it; the card re-enables them. `overflow: hidden` +
@@ -219,12 +274,11 @@ body {
   right: 0;
   bottom: 0;
   z-index: 10;
-  padding: 4rem var(--jam-space-5) var(--jam-space-6);
+  padding: var(--jam-composer-scrim-max) var(--jam-space-5) 28px;
   background: linear-gradient(
     to top,
-    var(--jam-bg) 45%,
-    color-mix(in srgb, var(--jam-bg) 70%, transparent) 72%,
-    transparent
+    var(--jam-bg) var(--jam-composer-clearance),
+    transparent calc(var(--jam-composer-clearance) + var(--jam-composer-scrim))
   );
   pointer-events: none;
   overflow: hidden;
@@ -270,14 +324,11 @@ body {
    rides exactly one gap over the card's top edge no matter how tall the textarea
    has grown — no offset to keep in sync with the card's height. Its slot is
    always in the flow (only the button inside comes and goes) so the composer, a
-   bottom-anchored auto-height box, keeps one height: otherwise appearing would
-   grow it ~46px and re-map the scrim gradient's percentage stops under the
-   transcript. `pointer-events: auto` opts the button back in from the scrim's
-   pass-through; the empty slot stays inert.
-
-   It aligns to the reading column's right edge rather than its center, because
-   the prose behind it is ragged-right: most lines end short of that edge, so the
-   disc lands in empty space instead of amputating a word mid-line. */
+   bottom-anchored auto-height box, keeps one height. Nothing downstream depends on
+   that any more — the card sits below the slot, so its distance from the floor,
+   which anchors both the scrim and the transcript's padding, holds either way.
+   `pointer-events: auto` opts the button back in from the scrim's pass-through;
+   the empty slot stays inert. */
 .jam-scroll-latest-slot {
   display: flex;
   /* Centered over the transcript's measure, not tucked into a corner: the
@@ -302,8 +353,8 @@ body {
   border-radius: 999px;
   /* Not `--jam-shadow` — that's tuned for the big cards and vanishes on a 34px
      disc. This one is tight and dark enough to lift the button off the line of
-     transcript text it can still cover, which is the whole job here: it sits at
-     the top of the scrim, where the gradient hasn't faded the text much yet. */
+     transcript text it can still cover, which is the whole job here: it straddles
+     the top of the scrim, so most of what it covers is undimmed text. */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
   cursor: pointer;
   animation: jam-scroll-latest-in 0.14s ease-out;

@@ -13,6 +13,9 @@
 // gap clear however tall the textarea grows; and when the button disappears out
 // from under a keyboard user, the textarea right here is where focus should land
 // (or, when an ended chat has disabled it, `onFocusEscape`).
+//
+// Because the card floats over the transcript, it also measures its own footprint
+// into `--jam-composer-clearance` (see below).
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
@@ -37,6 +40,8 @@ export function Composer({
 }) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   // Whether the scroll-to-latest button currently holds focus. It unmounts the
   // moment the view reaches the bottom — by its own click, or because the user
   // scrolled back down while it was focused — and a focused element removed from
@@ -63,6 +68,44 @@ export function Composer({
   // Focus on open so the user can start typing immediately.
   useEffect(() => {
     textareaRef.current?.focus();
+  }, []);
+
+  // Publish how much of the window the composer covers — the card's top edge down
+  // to the floor — so the transcript can pad its tail by exactly that much and no
+  // more (see `.jam-transcript-inner` in chrome.css). The card is what the reader
+  // must clear; the scroll-to-latest slot above it isn't counted, since it's only
+  // occupied when the view is away from the bottom. Re-measured whenever the card
+  // resizes, which is what the autosizing textarea does under a long draft — the
+  // extra height comes out of the transcript's padding, and its pin-to-bottom
+  // ResizeObserver (which watches the border box for exactly this) takes up the
+  // slack. Written as an inline style on the shell, which outranks the default
+  // declared there in CSS, so the cleanup below falls back to it rather than to
+  // nothing.
+  //
+  // The observed element is the scrim box, not the card inside it — they resize
+  // together (the scrim is bottom-anchored and auto-height), but the scrim sits one
+  // level shallower than `.jam-transcript-inner`, which is what this write resizes.
+  // A resize dirtied mid-delivery is only re-gathered in the same pass if it's
+  // *deeper* than the broadcast depth; observing the card instead puts the two at
+  // equal depth, and the transcript's notification gets deferred a frame with
+  // `ResizeObserver loop completed with undelivered notifications` on `window`.
+  // Observing the parent keeps the whole exchange inside one delivery pass.
+  useLayoutEffect(() => {
+    const composer = composerRef.current;
+    const card = cardRef.current;
+    const shell = composer?.closest<HTMLElement>('.jam-shell');
+    if (!shell || !composer || !card) return;
+    const measure = () => {
+      const clearance = composer.getBoundingClientRect().bottom - card.getBoundingClientRect().top;
+      shell.style.setProperty('--jam-composer-clearance', `${clearance}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(composer);
+    return () => {
+      observer.disconnect();
+      shell.style.removeProperty('--jam-composer-clearance');
+    };
   }, []);
 
   // Grow the textarea to fit its content (floored at two rows by CSS min-height,
@@ -96,9 +139,10 @@ export function Composer({
   );
 
   return (
-    <div className="jam-composer">
-      {/* The slot is always reserved, so showing the button doesn't grow this
-          bottom-anchored box and re-map the scrim gradient underneath it. */}
+    <div className="jam-composer" ref={composerRef}>
+      {/* The slot is always reserved so the button's arrival doesn't shift the
+          composer's own layout. It can't disturb the transcript either way — see
+          `.jam-scroll-latest-slot` in chrome.css. */}
       <div className="jam-scroll-latest-slot">
         {showScrollToBottom && (
           <button
@@ -122,7 +166,7 @@ export function Composer({
           </button>
         )}
       </div>
-      <div className="jam-composer-inner">
+      <div className="jam-composer-inner" ref={cardRef}>
         <textarea
           ref={textareaRef}
           className="jam-input"
