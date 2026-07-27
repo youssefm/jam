@@ -14,12 +14,13 @@
 // The raw TeX is the tagged element's text, so it would paint as plain source —
 // "looks like text, then jumps to an equation" — in the gap before KaTeX renders.
 // Two things close that gap. Once the chunk is loaded (the common case: every math
-// turn after the first) we typeset *synchronously* inside the caller's
-// layout effect, before the browser paints, so the raw TeX never shows and nothing
-// shifts. The one time the chunk is still loading — the first math turn of the
-// session — we hold the whole turn hidden (`.jam-math-loading`, see theme.css) and
-// fade it in once typeset, so the reply appears fully-formed instead of flashing
-// raw TeX or popping an equation into place.
+// turn after the first, and *every* turn on a reload, which preloads — see
+// `preloadMath`) we typeset *synchronously* inside the caller's layout effect,
+// before the browser paints, so the raw TeX never shows and nothing shifts. The one
+// time the chunk is still loading — the first math turn to arrive in a session that
+// didn't open with any — we hold the whole turn hidden (`.jam-math-loading`, see
+// theme.css) and fade it in once typeset, so the reply appears fully-formed instead
+// of flashing raw TeX or popping an equation into place.
 
 import type katexNamespace from 'katex';
 
@@ -73,6 +74,47 @@ function renderElement(katexModule: Katex, el: HTMLElement): void {
     });
   } catch (error) {
     console.warn('jam: could not render a math element', error);
+  }
+}
+
+// Does this HTML carry math? Lives here, next to the selector it mirrors, so a
+// rename shows up as two adjacent lines to fix rather than a silent drift across
+// files — nothing *enforces* the two agree. Deliberately a loose substring rather
+// than a `class="…"` match: both tags share this prefix, and it stays right
+// whatever the quoting or class order. A false positive costs one chunk fetch; a
+// false negative costs the layout shift this exists to prevent, so loose is the
+// direction to err in.
+export function containsMath(html: string): boolean {
+  return html.includes('jam-math');
+}
+
+// Warm the KaTeX chunk *before* the first render, so the turns already in the
+// transcript take the synchronous path above and their equations are at final
+// size in the very first layout. This is what keeps a reload motionless: the
+// held-and-faded path below reserves the *raw TeX* height, not the typeset one, so
+// letting a restored transcript take it would resize turns after mount and drag
+// the pinned-to-bottom view with them.
+//
+// Bounded, because boot blocks first paint on it — unlike the `/state` fetch,
+// which is unbounded because there is simply no chat to draw without it. This is
+// an optimization, so it gets to give up. The bound is not a pure safety margin:
+// at 300ms against a ~20ms measured cold load it has an order of magnitude of
+// headroom, but if it *does* fire the user pays the blank wait and still gets the
+// shift, since the turns fall back to the lazy hold-and-fade path (sharing this
+// same in-flight promise). It's capped there because a blank screen is the worse
+// of the two failures past about a fifth of a second.
+const PRELOAD_TIMEOUT_MS = 300;
+
+export async function preloadMath(): Promise<void> {
+  try {
+    await Promise.race([
+      loadKatex(),
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, PRELOAD_TIMEOUT_MS);
+      }),
+    ]);
+  } catch {
+    /* the per-turn lazy path retries and degrades to raw TeX */
   }
 }
 

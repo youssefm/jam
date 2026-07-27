@@ -4,9 +4,11 @@
 // new agent reply is revealed in full when it fits the viewport; a
 // taller-than-viewport reply is anchored on the user's preceding message, so the
 // question stays in view and they read down through the reply rather than being
-// dropped at its end. Every move after the initial load animates smoothly. Agent
-// HTML settles its height a frame or two after mount (images, fonts, layout), so a
-// ResizeObserver keeps the view pinned through those late changes.
+// dropped at its end. A reload restores that same framing — long reply at its
+// question, anything shorter at the bottom — but lands there instantly, before the
+// first paint, so there is no scrolling to see. Agent HTML settles its height a
+// frame or two after mount (images, fonts, layout), so a ResizeObserver keeps the
+// view pinned through those late changes.
 
 import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
@@ -22,6 +24,22 @@ const AT_BOTTOM_SLACK = 80;
 // top, so it doesn't sit flush under the header.
 const READ_TOP_GAP = 16;
 
+// The human message a reply answers: the nearest preceding `.jam-you`, which is
+// what we anchor a long reply on. Walking back rather than taking the immediate
+// previous sibling is what handles two agent turns in a row — nothing prevents
+// them, since the composer gate caps *human* messages in flight, not agent
+// replies — by stopping at the other `.jam-turn` and self-anchoring. With no
+// question to anchor on (that case, or a transcript that opens with a seeded
+// agent message) the reply starts at its own first line.
+function anchorFor(turn: HTMLElement): HTMLElement {
+  let node = turn.previousElementSibling;
+  while (node instanceof HTMLElement && !node.classList.contains('jam-turn')) {
+    if (node.classList.contains('jam-you')) return node;
+    node = node.previousElementSibling;
+  }
+  return turn;
+}
+
 export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -29,9 +47,29 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
   // handlers read it without re-subscribing, so it lives in a ref (nothing renders
   // off it, so it needs no state).
   const pinnedRef = useRef(true);
-  // The first layout pass just lands at the bottom (show the latest); the smart
-  // reveal logic only kicks in for turns that arrive afterward.
+  // Whether the first layout pass has run. It takes the same reveal decision as a
+  // later arrival but positions instantly rather than animating.
   const didInit = useRef(false);
+  // The trailing turn we last repositioned for. `turns` is rebuilt wholesale on
+  // every SSE reconcile (for why, see the `Turn` memo comment below), so array
+  // identity alone would replay the reveal for a transcript that hasn't actually
+  // changed — including on the reconcile that follows every reload: a scroll to
+  // the bottom, or a scroll *up* to the anchor for a long trailing reply. Keying
+  // on the id means a reconcile of the same transcript moves nothing. (One gap it
+  // doesn't cover: `reconcile` re-sorts client-only turns to the tail, so a
+  // pending error notice can outlive the reply that followed it, become the
+  // trailing turn on the next reconnect, and take the human-turn branch below —
+  // scrolling to the bottom from wherever the user was reading.)
+  const revealedId = useRef<number | null>(null);
+  // Whether the last scroll was ours rather than the user's. A programmatic
+  // scroll fires `scroll` exactly like a real one, and `onScroll` reads position
+  // as intent — so anchoring close to the bottom would re-pin the view we just
+  // deliberately unpinned, and the ResizeObserver would then drag it down. There
+  // is no flag on the event to tell them apart, so we mark our own and clear it on
+  // the input that means the user took over. (Position alone can't decide it: the
+  // anchored spot is legitimately within `AT_BOTTOM_SLACK` for a reply only a
+  // little taller than the viewport.)
+  const selfScrolled = useRef(false);
 
   const setPin = useCallback((value: boolean) => {
     pinnedRef.current = value;
@@ -39,7 +77,9 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = scrollRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+    if (!el) return;
+    selfScrolled.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
 
   // Bring `el`'s top just below the viewport top, so a long reply (anchored on the
@@ -47,57 +87,111 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
   const scrollToTopOf = useCallback((el: HTMLElement, behavior: ScrollBehavior = 'smooth') => {
     const scroll = scrollRef.current;
     if (!scroll) return;
+    selfScrolled.current = true;
     const delta = el.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
     scroll.scrollTo({ top: scroll.scrollTop + delta - READ_TOP_GAP, behavior });
   }, []);
 
-  // A user scroll decides whether we stay pinned: near the bottom re-pins, away
-  // from it unpins and the view stops following new content.
-  const onScroll = useCallback(() => {
+  // The user taking hold of the scroller — wheel or trackpad, a scrollbar drag or
+  // touch, or the keyboard. From here the `scroll` events are theirs to interpret.
+  const onUserScrollIntent = useCallback(() => {
+    selfScrolled.current = false;
+  }, []);
+
+  // Belt and braces for scrolls with no input event of ours to hang off — a
+  // find-in-page jump, whose keystrokes go to the browser's find bar rather than
+  // the transcript. Once our own scroll has come to rest, anything after it is the
+  // user's. Silently absent on browsers without `scrollend`, which is why the
+  // intent handlers above carry the common paths rather than relying on this.
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    el.addEventListener('scrollend', onUserScrollIntent);
+    return () => el.removeEventListener('scrollend', onUserScrollIntent);
+  }, [onUserScrollIntent]);
+
+  // A user scroll decides whether we stay pinned: near the bottom re-pins, away
+  // from it unpins and the view stops following new content. Our own scrolls are
+  // not intent and say nothing about where the user wants to be — they've already
+  // set the pin deliberately.
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || selfScrolled.current) return;
     setPin(el.scrollHeight - el.scrollTop - el.clientHeight <= AT_BOTTOM_SLACK);
   }, [setPin]);
 
-  // A new turn (or the typing indicator) appends and we reposition the view: the
-  // initial load lands at the bottom instantly, and every later move animates
-  // smoothly. A user scroll away opts out until they return to the bottom.
+  // A new turn (or the first layout pass) repositions the view. The initial load
+  // takes the same reveal decision as an arriving turn but lands instantly — it
+  // runs before the first paint, so the page simply appears in position rather
+  // than scrolling into it — and every later move animates smoothly. A user scroll
+  // away opts out until they return to the bottom.
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
     const content = contentRef.current;
     if (!scroll || !content) return;
-    if (!didInit.current) {
-      didInit.current = true;
-      scrollToBottom('auto');
-      return;
-    }
     const last = turns[turns.length - 1];
+    const lastId = last?.id ?? null;
+    const initial = !didInit.current;
+    // Same trailing turn as last time — a reconcile, not an arrival. Stay put.
+    if (!initial && lastId === revealedId.current) return;
+    didInit.current = true;
+    revealedId.current = lastId;
+    const behavior: ScrollBehavior = initial ? 'auto' : 'smooth';
     // The user's own message (or a send error) is an explicit action — always
     // follow it to the bottom and resume pinning, even mid-read of a long reply.
+    // A reload with a trailing human turn means the agent is still composing, and
+    // the bottom is where to be for that too.
     if (last && last.role !== 'agent') {
       setPin(true);
-      scrollToBottom('smooth');
+      scrollToBottom(behavior);
       return;
     }
-    if (!pinnedRef.current) return;
-    // A multi-page agent reply is anchored on the user's preceding message so the
-    // question stays in view above the reply's start; the user then reads down to
-    // the end. Everything shorter stays at the bottom.
+    // `initial` can't be unpinned (`pinnedRef` starts true), but say so rather
+    // than rest on it: this is the line that decides whether a reading user's
+    // scroll position is respected, and the first pass must always position.
+    if (!initial && !pinnedRef.current) return;
+    // A reply the user can't take in at once is anchored on the question that
+    // prompted it, so that question stays in view above the reply's start and they
+    // read down through it. A reload takes this same path, so a long reply resumes
+    // at its question instead of at its tail — and unpinning here is what keeps it
+    // there, since the ResizeObserver below only chases the bottom while pinned.
+    //
+    // The test is whether the *whole exchange* — question through the end of the
+    // content — fits the viewport, not whether the reply alone is taller than it.
+    // Measuring the reply alone got the boundary wrong in the damaging direction:
+    // the composer clearance `.jam-transcript-inner` pads the bottom with is
+    // viewport the bottom of the scroll can't use, so a reply a hair *under* the
+    // viewport height took the `else` here and landed with its own opening
+    // scrolled off the top. Measured anchor-to-bottom against the same
+    // `READ_TOP_GAP` the anchored branch leaves, the two are pixel-continuous at
+    // the threshold: "it fits" means going to the bottom already puts the question
+    // exactly where anchoring would have.
     if (last) {
       const els = content.querySelectorAll<HTMLElement>('.jam-turn');
       const el = els[els.length - 1];
-      if (el && el.getBoundingClientRect().height > scroll.clientHeight) {
-        const anchor = el.previousElementSibling instanceof HTMLElement ? el.previousElementSibling : el;
-        scrollToTopOf(anchor);
-        setPin(false);
-        return;
+      if (el) {
+        const anchor = anchorFor(el);
+        const exchange = content.getBoundingClientRect().bottom - anchor.getBoundingClientRect().top;
+        if (exchange + READ_TOP_GAP > scroll.clientHeight) {
+          scrollToTopOf(anchor, behavior);
+          setPin(false);
+          return;
+        }
       }
     }
-    scrollToBottom('smooth');
+    scrollToBottom(behavior);
   }, [turns, agentBusy, scrollToBottom, scrollToTopOf, setPin]);
 
   // Late height changes (agent HTML laying out after mount) keep the bottom in
   // view only while the user is still following it.
+  //
+  // Known gap: this maintains the pinned mode but not the anchored one. Content
+  // growing *above* the anchor slides it without moving `scrollTop`, and the
+  // anchored path deliberately unpinned, so nothing corrects it. Mostly theoretical
+  // — the two things that settle late are handled (fonts are already applied by
+  // first paint on a reload, KaTeX is preloaded), and browser scroll anchoring
+  // covers it outside Safari. What's left is an agent-authored `<img>` with no
+  // intrinsic size above the anchor.
   useEffect(() => {
     const content = contentRef.current;
     if (!content) return;
@@ -114,6 +208,9 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
       className="jam-transcript"
       ref={scrollRef}
       onScroll={onScroll}
+      onWheel={onUserScrollIntent}
+      onPointerDown={onUserScrollIntent}
+      onKeyDown={onUserScrollIntent}
       // An explicit tab stop so keyboard users can focus and scroll the log in
       // every browser (not just Chrome's implicit focusable-scroller behavior,
       // which only kicks in when the region overflows and has no focusable child).

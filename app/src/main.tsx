@@ -24,6 +24,7 @@ import './styles/design-language.css';
 import './styles/chrome.css';
 
 import { App } from './App';
+import { containsMath, preloadMath } from './math';
 import { fetchState } from './state';
 
 const container = document.getElementById('root');
@@ -31,13 +32,18 @@ if (!container) throw new Error('missing #root');
 const root = createRoot(container);
 
 fetchState()
-  .then((state) =>
+  .then(async (state) => {
+    // Before the first render is the only place this can happen — once a turn has
+    // mounted, typesetting it is a resize (see math.ts).
+    if (state.chat.some((entry) => entry.format === 'html' && containsMath(entry.text))) {
+      await preloadMath();
+    }
     root.render(
       <StrictMode>
         <App state={state} />
       </StrictMode>,
-    ),
-  )
+    );
+  })
   .catch((err: unknown) => {
     container.textContent = `jam: couldn't load the chat (${err instanceof Error ? err.message : String(err)})`;
   });
