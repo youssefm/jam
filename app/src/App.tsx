@@ -3,13 +3,14 @@
 // to the three panes and nothing more; the transcript owns autoscroll, the
 // composer owns its textarea, and the machine owns the stream and the wire.
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useChat } from './chat';
 import { IS_MAC } from './platform';
 import { signalAgentState } from './agentHub';
 import { JamMark } from './JamMark';
 import { Transcript } from './Transcript';
+import type { TranscriptHandle } from './Transcript';
 import { Composer } from './Composer';
 import type { ChatState } from './state';
 
@@ -21,6 +22,12 @@ function sessionName(): string {
 
 export function App({ state }: { state: ChatState }) {
   const { turns, agentBusy, ended, send, end } = useChat(state.chat);
+  // The transcript owns whether the view is following the latest turn; the shell
+  // only mirrors it, to offer the way back down (the button lives in the composer,
+  // which is what the transcript's bottom is hiding behind).
+  const [atBottom, setAtBottom] = useState(true);
+  const transcriptRef = useRef<TranscriptHandle>(null);
+  const focusTranscript = useCallback(() => transcriptRef.current?.focus(), []);
 
   // A freshly-loaded chat is ready for the user, so tell the AgentHub host (no-op
   // elsewhere) — this points the user to the tab even when AgentHub is
@@ -63,9 +70,16 @@ export function App({ state }: { state: ChatState }) {
         </button>
       </header>
 
-      <Transcript turns={turns} agentBusy={agentBusy} />
+      <Transcript ref={transcriptRef} turns={turns} agentBusy={agentBusy} onAtBottomChange={setAtBottom} />
 
-      <Composer busy={agentBusy} ended={ended != null} onSend={(text) => void send(text)} />
+      <Composer
+        busy={agentBusy}
+        ended={ended != null}
+        onSend={(text) => void send(text)}
+        showScrollToBottom={!atBottom}
+        onScrollToBottom={() => transcriptRef.current?.scrollToBottom()}
+        onFocusEscape={focusTranscript}
+      />
 
       {/* The transcript's keyboard focus ring, painted above the composer so it
           stays crisp instead of fading under the composer scrim (see chrome.css). */}

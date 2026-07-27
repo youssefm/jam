@@ -8,9 +8,12 @@
 // question, anything shorter at the bottom — but lands there instantly, before the
 // first paint, so there is no scrolling to see. Agent HTML settles its height a
 // frame or two after mount (images, fonts, layout), so a ResizeObserver keeps the
-// view pinned through those late changes.
+// view pinned through those late changes. While the bottom is off-screen the shell
+// offers a way back to it — a "scroll to latest" button (see Composer.tsx), fed by
+// `onAtBottomChange` and answered by the `scrollToBottom` handle below.
 
-import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import type { Ref } from 'react';
 
 import { highlightWithin } from './highlight';
 import { renderMathWithin } from './math';
@@ -40,7 +43,32 @@ function anchorFor(turn: HTMLElement): HTMLElement {
   return turn;
 }
 
-export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy: boolean }) {
+// `behavior: 'smooth'` ignores the reduced-motion preference — unlike a CSS
+// transition, nothing downgrades it for us — so every animated scroll asks. Read at
+// call time, not module load: the OS setting can flip mid-session.
+function resolveBehavior(behavior: ScrollBehavior): ScrollBehavior {
+  if (behavior !== 'smooth') return behavior;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
+// The two things the shell can ask of the transcript: jump back to the latest turn
+// (the "scroll to latest" button, which the composer paints above its card), and
+// take keyboard focus when that button disappears out from under it.
+export type TranscriptHandle = { scrollToBottom: () => void; focus: () => void };
+
+export function Transcript({
+  turns,
+  agentBusy,
+  onAtBottomChange,
+  ref,
+}: {
+  turns: TurnType[];
+  agentBusy: boolean;
+  // Reports the *measured* bottom-ness of the view, so the shell can offer a way
+  // back down. Fired from `onScroll` — see the note there.
+  onAtBottomChange: (atBottom: boolean) => void;
+  ref?: Ref<TranscriptHandle>;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   // Whether the view is following the latest turn. The ResizeObserver and scroll
@@ -79,8 +107,24 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
     const el = scrollRef.current;
     if (!el) return;
     selfScrolled.current = true;
-    el.scrollTo({ top: el.scrollHeight, behavior });
+    el.scrollTo({ top: el.scrollHeight, behavior: resolveBehavior(behavior) });
   }, []);
+
+  // Jumping back down is an explicit "follow the latest again": re-pin so arriving
+  // turns keep moving the view, then scroll. The button that calls this clears
+  // itself when the animation *lands* — `onScroll` keeps measuring throughout, even
+  // though the scroll is ours — rather than when it starts.
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToBottom: () => {
+        setPin(true);
+        scrollToBottom('smooth');
+      },
+      focus: () => scrollRef.current?.focus({ preventScroll: true }),
+    }),
+    [scrollToBottom, setPin],
+  );
 
   // Bring `el`'s top just below the viewport top, so a long reply (anchored on the
   // user's message) starts at the top of the reading area.
@@ -89,7 +133,7 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
     if (!scroll) return;
     selfScrolled.current = true;
     const delta = el.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
-    scroll.scrollTo({ top: scroll.scrollTop + delta - READ_TOP_GAP, behavior });
+    scroll.scrollTo({ top: scroll.scrollTop + delta - READ_TOP_GAP, behavior: resolveBehavior(behavior) });
   }, []);
 
   // The user taking hold of the scroller — wheel or trackpad, a scrollbar drag or
@@ -114,11 +158,24 @@ export function Transcript({ turns, agentBusy }: { turns: TurnType[]; agentBusy:
   // from it unpins and the view stops following new content. Our own scrolls are
   // not intent and say nothing about where the user wants to be — they've already
   // set the pin deliberately.
+  //
+  // The at-bottom mirror is the exception, and takes the measurement above that
+  // gate: it reports where the view *is*, not what anyone meant, so it has to keep
+  // reporting through our own scrolls — those are most of the movement the button
+  // cares about. Taking it from the pin instead would report intent, and the
+  // callers that re-pin before an animated scroll would claim "at the bottom" a few
+  // hundred milliseconds early, blinking the button out before the ride down it
+  // triggered had started. It can lag when something moves the bottom without
+  // moving the offset (a window resize, a turn re-rendering shorter); the next
+  // scroll of any size corrects it.
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || selfScrolled.current) return;
-    setPin(el.scrollHeight - el.scrollTop - el.clientHeight <= AT_BOTTOM_SLACK);
-  }, [setPin]);
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= AT_BOTTOM_SLACK;
+    onAtBottomChange(atBottom);
+    if (selfScrolled.current) return;
+    setPin(atBottom);
+  }, [setPin, onAtBottomChange]);
 
   // A new turn (or the first layout pass) repositions the view. The initial load
   // takes the same reveal decision as an arriving turn but lands instantly — it

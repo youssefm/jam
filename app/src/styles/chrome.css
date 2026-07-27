@@ -19,6 +19,7 @@ body {
    0` lets the middle flex child actually shrink so its own scroll engages. */
 .jam-shell {
   --jam-header-height: 52px;
+  --jam-scroll-latest-size: 34px;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -125,8 +126,9 @@ body {
   margin: 0 auto;
   /* The generous bottom padding is clearance for the floating composer, which
      overlays the bottom of the transcript — the last turn rests above the card
-     instead of behind it. */
-  padding: var(--jam-space-6) 0 10rem;
+     instead of behind it. It covers the card, its scroll-to-latest slot, and a
+     margin of slack on top. */
+  padding: var(--jam-space-6) 0 13rem;
   display: flex;
   flex-direction: column;
   gap: var(--jam-space-5);
@@ -264,6 +266,60 @@ body {
 .jam-input:focus-visible { outline: none; }
 .jam-input:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* "Scroll to latest": a flow sibling directly above the composer card, so it
+   rides exactly one gap over the card's top edge no matter how tall the textarea
+   has grown — no offset to keep in sync with the card's height. Its slot is
+   always in the flow (only the button inside comes and goes) so the composer, a
+   bottom-anchored auto-height box, keeps one height: otherwise appearing would
+   grow it ~46px and re-map the scrim gradient's percentage stops under the
+   transcript. `pointer-events: auto` opts the button back in from the scrim's
+   pass-through; the empty slot stays inert.
+
+   It aligns to the reading column's right edge rather than its center, because
+   the prose behind it is ragged-right: most lines end short of that edge, so the
+   disc lands in empty space instead of amputating a word mid-line. */
+.jam-scroll-latest-slot {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: var(--jam-measure);
+  height: var(--jam-scroll-latest-size);
+  margin: 0 auto var(--jam-space-3);
+}
+.jam-scroll-latest {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--jam-scroll-latest-size);
+  height: var(--jam-scroll-latest-size);
+  padding: 0;
+  color: var(--jam-ink-muted);
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border);
+  border-radius: 999px;
+  /* Not `--jam-shadow` — that's tuned for the big cards and vanishes on a 34px
+     disc. This one is tight and dark enough to lift the button off the line of
+     transcript text it can still cover, which is the whole job here: it sits at
+     the top of the scrim, where the gradient hasn't faded the text much yet. */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  animation: jam-scroll-latest-in 0.14s ease-out;
+  transition: color 0.12s;
+}
+.jam-scroll-latest:hover { color: var(--jam-accent); }
+/* The scroll it starts is smooth and takes most of a second, so the press needs
+   its own acknowledgement — nothing else moves for a beat. */
+.jam-scroll-latest:active { transform: translateY(1px); }
+.jam-scroll-latest:focus-visible { outline: 2px solid var(--jam-accent); outline-offset: 1px; }
+@keyframes jam-scroll-latest-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-scroll-latest { animation: none; }
+}
+
 /* --- buttons --------------------------------------------------------------- */
 .jam-btn {
   font: inherit;
@@ -299,4 +355,10 @@ body {
   border-radius: 999px;
   box-shadow: var(--jam-shadow);
 }
-body.jam-ended .jam-composer { opacity: 0.5; pointer-events: none; }
+/* An ended chat dims the *card* rather than the whole composer, so the scroll-to
+   -latest button above it stays crisp and clickable — the transcript is still
+   readable (and scrollable) after the chat closes, which is the only thing left to
+   do with it. Side effect, and an improvement: the scrim gradient is no longer
+   dimmed along with the card, so the transcript fades out behind a full-strength
+   scrim instead of bleeding through a half-transparent one. */
+body.jam-ended .jam-composer-inner { opacity: 0.5; pointer-events: none; }
