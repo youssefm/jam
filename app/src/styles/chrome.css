@@ -252,8 +252,9 @@ body {
 
 /* The composer floats over the bottom of the transcript as an elevated rounded
    card, so the conversation scrolls behind it and fades out under a gradient
-   scrim (rather than stopping at a docked bar with a hard top border). The outer
-   element is the full-width scrim; `.jam-composer-inner` is the card.
+   scrim (rather than stopping at a docked bar with a hard top border). This
+   element is the full-width overlay — the scrim is the `::before` below it, inset
+   to hold clear of the transcript's scrollbar; `.jam-composer-inner` is the card.
 
    The scrim is opaque up to the card's top edge and fades out over the band above
    it — anchored in pixels off the floor (the same measured clearance the transcript
@@ -264,8 +265,8 @@ body {
    `--jam-composer-scrim`). The top padding is the ramp's headroom inside this box,
    taken from the longer of the two lengths so the ramp always has room.
 
-   `pointer-events: none` on the scrim lets clicks fall through the faded area to
-   the transcript behind it; the card re-enables them. `overflow: hidden` +
+   `pointer-events: none` on the overlay lets clicks fall through the faded area
+   to the transcript behind it; the card re-enables them. `overflow: hidden` +
    `scrollbar-gutter` keeps the card's reading column exactly aligned with the
    transcript's (same both-edge gutter — no scrollbar ever shows here). */
 .jam-composer {
@@ -275,14 +276,48 @@ body {
   bottom: 0;
   z-index: 10;
   padding: var(--jam-composer-scrim-max) var(--jam-space-5) 28px;
+  pointer-events: none;
+  overflow: hidden;
+  scrollbar-gutter: stable both-edges;
+}
+/* The gradient itself, painted by a child rather than as this box's own background
+   so that it stops clear of the transcript's scrollbar instead of dissolving the
+   lower stretch of it along with the text. What separates the two is a box-model
+   asymmetry, not the element: reserved scrollbar space lies *outside* the padding
+   box for layout — so an absolutely positioned child ends where the scrollbar
+   begins — but counts as part of the padding area for background painting, which
+   is exactly how the old background reached underneath the bar (CSS Overflow 3
+   §5.1). Keep the gradient as this element's background in any form and the
+   clearance reverts to a flat one side-padding measured from the window's edge,
+   which a wide enough scrollbar eats through. (`background-origin: content-box`
+   is the one spelling that escapes the asymmetry — a content box is a layout box —
+   but it lifts the ramp's floor by this box's bottom padding, desynchronizing it
+   from the clearance Composer.tsx measures off the border-box floor.)
+
+   Past the gutter it inherits for free that way, it gives up one further side-
+   padding, which is what clears an *overlay* scrollbar too — that one has no gutter
+   to sit in and floats inside the padding. Symmetric, so it holds whichever inline
+   edge the bar is on. Its edges land on this box's content edges — an inset of one
+   side-padding on a box padded by exactly that *is* the content box — which are the
+   transcript's too: nothing that can hold text is left unscrimmed (past the measure
+   the reading column stops well short of them). What the edges abut is the padding
+   either side, `--jam-bg` over `--jam-bg`, so there's no seam to see; beyond that
+   lie the two gutters, one of them holding the scrollbar this is all for.
+
+   `z-index: -1` puts it behind the card and the scroll-to-latest button, which are
+   in flow (and so would otherwise paint *under* a positioned sibling). It stays
+   above the transcript regardless: this box is a stacking context, so the negative
+   index is contained to it. */
+.jam-composer::before {
+  content: '';
+  position: absolute;
+  inset: 0 var(--jam-space-5);
+  z-index: -1;
   background: linear-gradient(
     to top,
     var(--jam-bg) var(--jam-composer-clearance),
     transparent calc(var(--jam-composer-clearance) + var(--jam-composer-scrim))
   );
-  pointer-events: none;
-  overflow: hidden;
-  scrollbar-gutter: stable both-edges;
 }
 .jam-composer-inner {
   pointer-events: auto;
